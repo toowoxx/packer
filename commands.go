@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package main
+package packer
 
 import (
 	"github.com/hashicorp/packer/command"

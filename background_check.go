@@ -1,7 +1,7 @@
 //go:build !openbsd
 // +build !openbsd
 
-package main
+package packer
 
 import (
 	"fmt"

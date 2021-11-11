@@ -4,7 +4,7 @@
 // This is the main package for the `packer` application.
 
 //go:generate go run ./scripts/generate-plugins.go
-package main
+package packer
 
 import (
 	"fmt"
@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	"github.com/hashicorp/packer-plugin-sdk/pathing"
-	pluginsdk "github.com/hashicorp/packer-plugin-sdk/plugin"
 	"github.com/hashicorp/packer-plugin-sdk/tmp"
 	"github.com/hashicorp/packer/command"
 	"github.com/hashicorp/packer/packer"
@@ -31,15 +30,8 @@ import (
 	"github.com/mitchellh/prefixedio"
 )
 
-func main() {
-	// Call realMain instead of doing the work here so we can use
-	// `defer` statements within the function and have them work properly.
-	// (defers aren't called with os.Exit)
-	os.Exit(realMain())
-}
-
-// realMain is executed from main and returns the exit status to exit with.
-func realMain() int {
+// Main is executed from main and returns the exit status to exit with.
+func Main(args []string) int {
 	var wrapConfig panicwrap.WrapConfig
 	// When following env variable is set, packer
 	// wont panic wrap itself as it's already wrapped.
@@ -49,7 +41,7 @@ func realMain() int {
 
 	if inPlugin() || panicwrap.Wrapped(&wrapConfig) {
 		// Call the real main
-		return wrappedMain()
+		return wrappedMain(args)
 	}
 
 	// Generate a UUID for this packer run and pass it to the environment.
@@ -128,7 +120,7 @@ func realMain() int {
 
 // wrappedMain is called only when we're wrapped by panicwrap and
 // returns the exit status to exit with.
-func wrappedMain() int {
+func wrappedMain(args []string) int {
 	// WARNING: WrappedMain causes unexpected behaviors when writing to stderr
 	// and stdout.  Anything in this function written to stderr will be captured
 	// by the logger, but will not be written to the terminal. Anything in
@@ -193,7 +185,7 @@ func wrappedMain() int {
 
 	// Determine if we're in machine-readable mode by mucking around with
 	// the arguments...
-	args, machineReadable := extractMachineReadable(os.Args[1:])
+	_, machineReadable := extractMachineReadable(os.Args[1:])
 
 	defer packer.CleanupClients()
 
@@ -254,7 +246,7 @@ func wrappedMain() int {
 
 	cli := &cli.CLI{
 		Args:         args,
-		Autocomplete: true,
+		Autocomplete: false,
 		Commands:     Commands,
 		HelpFunc:     excludeHelpFunc(Commands, []string{"plugin"}),
 		HelpWriter:   os.Stdout,
@@ -414,7 +406,7 @@ func copyOutput(r io.Reader, doneCh chan<- struct{}) {
 }
 
 func inPlugin() bool {
-	return os.Getenv(pluginsdk.MagicCookieKey) == pluginsdk.MagicCookieValue
+	return true
 }
 
 func init() {

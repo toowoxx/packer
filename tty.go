@@ -4,7 +4,7 @@
 //go:build !solaris
 // +build !solaris
 
-package main
+package packer
 
 import (
 	"github.com/mattn/go-tty"

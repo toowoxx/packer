@@ -1,4 +1,4 @@
-package main
+package packer
 
 import (
 	"github.com/hashicorp/packer/command"

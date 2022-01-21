@@ -7,6 +7,7 @@ import (
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	packer_registry "github.com/hashicorp/packer/internal/registry"
 	"github.com/hashicorp/packer/packer"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
@@ -27,8 +28,9 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 					&BuildBlock{
 						Name: "bucket-slug",
 						HCPPackerRegistry: &HCPPackerRegistryBlock{
-							Description: "Some description\n",
-							Labels:      map[string]string{"foo": "bar"},
+							Description:  "Some description\n",
+							BucketLabels: map[string]string{"foo": "bar"},
+							BuildLabels:  map[string]string{"python_version": "3.0"},
 						},
 						Sources: []SourceUseBlock{
 							{
@@ -52,9 +54,10 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 						Name:    "virtualbox-iso.ubuntu-1204",
 						Builder: emptyMockBuilder,
 						ArtifactMetadataPublisher: &packer_registry.Bucket{
-							Slug:        "bucket-slug",
-							Description: "Some description\n",
-							Labels:      map[string]string{"foo": "bar"},
+							Slug:         "bucket-slug",
+							Description:  "Some description\n",
+							BucketLabels: map[string]string{"foo": "bar"},
+							BuildLabels:  map[string]string{"python_version": "3.0"},
 							Iteration: &packer_registry.Iteration{
 								Fingerprint: "ignored-fingerprint", // this will be different everytime so it's ignored
 							},
@@ -67,9 +70,10 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 								PostProcessor: &packer.RegistryPostProcessor{
 									BuilderType: "virtualbox-iso.ubuntu-1204",
 									ArtifactMetadataPublisher: &packer_registry.Bucket{
-										Slug:        "bucket-slug",
-										Description: "Some description\n",
-										Labels:      map[string]string{"foo": "bar"},
+										Slug:         "bucket-slug",
+										Description:  "Some description\n",
+										BucketLabels: map[string]string{"foo": "bar"},
+										BuildLabels:  map[string]string{"python_version": "3.0"},
 										Iteration: &packer_registry.Iteration{
 											Fingerprint: "ignored-fingerprint",
 										},
@@ -87,9 +91,10 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 						Name:    "amazon-ebs.aws-ubuntu-16.04",
 						Builder: emptyMockBuilder,
 						ArtifactMetadataPublisher: &packer_registry.Bucket{
-							Slug:        "bucket-slug",
-							Description: "Some description\n",
-							Labels:      map[string]string{"foo": "bar"},
+							Slug:         "bucket-slug",
+							Description:  "Some description\n",
+							BucketLabels: map[string]string{"foo": "bar"},
+							BuildLabels:  map[string]string{"python_version": "3.0"},
 							Iteration: &packer_registry.Iteration{
 								Fingerprint: "ignored-fingerprint", // this will be different everytime so it's ignored
 							},
@@ -102,9 +107,10 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 								PostProcessor: &packer.RegistryPostProcessor{
 									BuilderType: "amazon-ebs.aws-ubuntu-16.04",
 									ArtifactMetadataPublisher: &packer_registry.Bucket{
-										Slug:        "bucket-slug",
-										Description: "Some description\n",
-										Labels:      map[string]string{"foo": "bar"},
+										Slug:         "bucket-slug",
+										Description:  "Some description\n",
+										BucketLabels: map[string]string{"foo": "bar"},
+										BuildLabels:  map[string]string{"python_version": "3.0"},
 										Iteration: &packer_registry.Iteration{
 											Fingerprint: "ignored-fingerprint",
 										},
@@ -130,9 +136,9 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 					&BuildBlock{
 						Name: "bucket-slug",
 						HCPPackerRegistry: &HCPPackerRegistryBlock{
-							Slug:        "real-bucket-slug",
-							Description: "Some description\n",
-							Labels:      map[string]string{"foo": "bar"},
+							Slug:         "real-bucket-slug",
+							Description:  "Some description\n",
+							BucketLabels: map[string]string{"foo": "bar"},
 						},
 						Sources: []SourceUseBlock{
 							{
@@ -152,9 +158,9 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 						Name:    "virtualbox-iso.ubuntu-1204",
 						Builder: emptyMockBuilder,
 						ArtifactMetadataPublisher: &packer_registry.Bucket{
-							Slug:        "real-bucket-slug",
-							Description: "Some description\n",
-							Labels:      map[string]string{"foo": "bar"},
+							Slug:         "real-bucket-slug",
+							Description:  "Some description\n",
+							BucketLabels: map[string]string{"foo": "bar"},
 							Iteration: &packer_registry.Iteration{
 								Fingerprint: "ignored-fingerprint", // this will be different everytime so it's ignored
 							},
@@ -167,9 +173,9 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 								PostProcessor: &packer.RegistryPostProcessor{
 									BuilderType: "virtualbox-iso.ubuntu-1204",
 									ArtifactMetadataPublisher: &packer_registry.Bucket{
-										Slug:        "real-bucket-slug",
-										Description: "Some description\n",
-										Labels:      map[string]string{"foo": "bar"},
+										Slug:         "real-bucket-slug",
+										Description:  "Some description\n",
+										BucketLabels: map[string]string{"foo": "bar"},
 										Iteration: &packer_registry.Iteration{
 											Fingerprint: "ignored-fingerprint",
 										},
@@ -359,6 +365,210 @@ func Test_ParseHCPPackerRegistryBlock(t *testing.T) {
 									BuilderType: "virtualbox-iso.ubuntu-1204",
 									ArtifactMetadataPublisher: &packer_registry.Bucket{
 										Slug: "bucket-slug",
+										Iteration: &packer_registry.Iteration{
+											Fingerprint: "ignored-fingerprint",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			false,
+		},
+		{"deprecated labels in hcp_packer_registry block",
+			defaultParser,
+			parseTestArgs{"testdata/hcp_par/deprecated_labels.pkr.hcl", nil, nil},
+			&PackerConfig{
+				CorePackerVersionString: lockedVersion,
+				Basedir:                 filepath.Join("testdata", "hcp_par"),
+				Sources: map[SourceRef]SourceBlock{
+					refVBIsoUbuntu1204: {Type: "virtualbox-iso", Name: "ubuntu-1204"},
+				},
+				Builds: Builds{
+					&BuildBlock{
+						HCPPackerRegistry: &HCPPackerRegistryBlock{
+							Slug:         "bucket-slug",
+							BucketLabels: map[string]string{"foo": "bar"},
+						},
+						Sources: []SourceUseBlock{
+							{
+								SourceRef: refVBIsoUbuntu1204,
+							},
+						},
+					},
+				},
+			},
+			true, false,
+			[]packersdk.Build{
+				&packer.CoreBuild{
+					Type:     "virtualbox-iso.ubuntu-1204",
+					Prepared: true,
+					Builder: &packer.RegistryBuilder{
+						Name:    "virtualbox-iso.ubuntu-1204",
+						Builder: emptyMockBuilder,
+						ArtifactMetadataPublisher: &packer_registry.Bucket{
+							Slug:         "bucket-slug",
+							BucketLabels: map[string]string{"foo": "bar"},
+							Iteration: &packer_registry.Iteration{
+								Fingerprint: "ignored-fingerprint", // this will be different everytime so it's ignored
+							},
+						},
+					},
+					Provisioners: []packer.CoreBuildProvisioner{},
+					PostProcessors: [][]packer.CoreBuildPostProcessor{
+						{
+							{
+								PostProcessor: &packer.RegistryPostProcessor{
+									BuilderType: "virtualbox-iso.ubuntu-1204",
+									ArtifactMetadataPublisher: &packer_registry.Bucket{
+										Slug:         "bucket-slug",
+										BucketLabels: map[string]string{"foo": "bar"},
+										Iteration: &packer_registry.Iteration{
+											Fingerprint: "ignored-fingerprint",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			false,
+		},
+		{"bucket_name as variable",
+			defaultParser,
+			parseTestArgs{"testdata/hcp_par/variable-for-bucket_name.pkr.hcl", nil, nil},
+			&PackerConfig{
+				CorePackerVersionString: lockedVersion,
+				Basedir:                 filepath.Join("testdata", "hcp_par"),
+				InputVariables: Variables{
+					"bucket": &Variable{
+						Name:   "bucket",
+						Type:   cty.String,
+						Values: []VariableAssignment{{From: "default", Value: cty.StringVal("variable-bucket-slug")}},
+					},
+				},
+				Sources: map[SourceRef]SourceBlock{
+					refVBIsoUbuntu1204: {Type: "virtualbox-iso", Name: "ubuntu-1204"},
+				},
+				Builds: Builds{
+					&BuildBlock{
+						HCPPackerRegistry: &HCPPackerRegistryBlock{
+							Slug: "variable-bucket-slug",
+						},
+						Sources: []SourceUseBlock{
+							{
+								SourceRef: refVBIsoUbuntu1204,
+							},
+						},
+					},
+				},
+			},
+			false, false,
+			[]packersdk.Build{
+				&packer.CoreBuild{
+					Type:     "virtualbox-iso.ubuntu-1204",
+					Prepared: true,
+					Builder: &packer.RegistryBuilder{
+						Name:    "virtualbox-iso.ubuntu-1204",
+						Builder: emptyMockBuilder,
+						ArtifactMetadataPublisher: &packer_registry.Bucket{
+							Slug: "variable-bucket-slug",
+							Iteration: &packer_registry.Iteration{
+								Fingerprint: "ignored-fingerprint", // this will be different everytime so it's ignored
+							},
+						},
+					},
+					Provisioners: []packer.CoreBuildProvisioner{},
+					PostProcessors: [][]packer.CoreBuildPostProcessor{
+						{
+							{
+								PostProcessor: &packer.RegistryPostProcessor{
+									BuilderType: "virtualbox-iso.ubuntu-1204",
+									ArtifactMetadataPublisher: &packer_registry.Bucket{
+										Slug: "variable-bucket-slug",
+										Iteration: &packer_registry.Iteration{
+											Fingerprint: "ignored-fingerprint",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			false,
+		},
+		{"bucket_labels and build_labels as variables",
+			defaultParser,
+			parseTestArgs{"testdata/hcp_par/variables-for-labels.pkr.hcl", nil, nil},
+			&PackerConfig{
+				CorePackerVersionString: lockedVersion,
+				Basedir:                 filepath.Join("testdata", "hcp_par"),
+				InputVariables: Variables{
+					"bucket_labels": &Variable{
+						Name:   "bucket_labels",
+						Type:   cty.Map(cty.String),
+						Values: []VariableAssignment{{From: "default", Value: cty.MapVal(map[string]cty.Value{"team": cty.StringVal("development")})}},
+					},
+					"build_labels": &Variable{
+						Name: "build_labels",
+						Type: cty.Map(cty.String),
+						Values: []VariableAssignment{{
+							From: "default",
+							Value: cty.MapVal(map[string]cty.Value{
+								"packageA": cty.StringVal("v3.17.5"),
+								"packageZ": cty.StringVal("v0.6"),
+							})}},
+					},
+				},
+				Sources: map[SourceRef]SourceBlock{
+					refVBIsoUbuntu1204: {Type: "virtualbox-iso", Name: "ubuntu-1204"},
+				},
+				Builds: Builds{
+					&BuildBlock{
+						HCPPackerRegistry: &HCPPackerRegistryBlock{
+							Slug:         "bucket-slug",
+							BucketLabels: map[string]string{"team": "development"},
+							BuildLabels:  map[string]string{"packageA": "v3.17.5", "packageZ": "v0.6"},
+						},
+						Sources: []SourceUseBlock{
+							{
+								SourceRef: refVBIsoUbuntu1204,
+							},
+						},
+					},
+				},
+			},
+			false, false,
+			[]packersdk.Build{
+				&packer.CoreBuild{
+					Type:     "virtualbox-iso.ubuntu-1204",
+					Prepared: true,
+					Builder: &packer.RegistryBuilder{
+						Name:    "virtualbox-iso.ubuntu-1204",
+						Builder: emptyMockBuilder,
+						ArtifactMetadataPublisher: &packer_registry.Bucket{
+							Slug:         "bucket-slug",
+							BucketLabels: map[string]string{"team": "development"},
+							BuildLabels:  map[string]string{"packageA": "v3.17.5", "packageZ": "v0.6"},
+							Iteration: &packer_registry.Iteration{
+								Fingerprint: "ignored-fingerprint", // this will be different everytime so it's ignored
+							},
+						},
+					},
+					Provisioners: []packer.CoreBuildProvisioner{},
+					PostProcessors: [][]packer.CoreBuildPostProcessor{
+						{
+							{
+								PostProcessor: &packer.RegistryPostProcessor{
+									BuilderType: "virtualbox-iso.ubuntu-1204",
+									ArtifactMetadataPublisher: &packer_registry.Bucket{
+										Slug:         "bucket-slug",
+										BucketLabels: map[string]string{"team": "development"},
+										BuildLabels:  map[string]string{"packageA": "v3.17.5", "packageZ": "v0.6"},
 										Iteration: &packer_registry.Iteration{
 											Fingerprint: "ignored-fingerprint",
 										},

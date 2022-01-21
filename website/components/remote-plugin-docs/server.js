@@ -5,14 +5,11 @@ import {
   getPathsFromNavData,
 } from '@hashicorp/react-docs-page/server'
 import renderPageMdx from '@hashicorp/react-docs-page/render-page-mdx'
-import resolveNavData from './utils/resolve-nav-data'
+import resolveNavDataWithRemotePlugins from './utils/resolve-nav-data'
+import fetchLatestReleaseTag from './utils/fetch-latest-release-tag'
 
-async function generateStaticPaths({
-  navDataFile,
-  localContentDir,
-  remotePluginsFile,
-}) {
-  const navData = await resolveNavData(navDataFile, localContentDir, {
+async function generateStaticPaths({ navDataFile, remotePluginsFile }) {
+  const navData = await resolveNavDataWithRemotePlugins(navDataFile, {
     remotePluginsFile,
   })
   const paths = await getPathsFromNavData(navData)
@@ -33,12 +30,12 @@ async function generateStaticProps({
   // Resolve navData, including the possibility that this
   // page is a remote plugin docs, in which case we'll provide
   // the MDX fileString in the resolved navData
-  const navData = await resolveNavData(navDataFile, localContentDir, {
+  const navData = await resolveNavDataWithRemotePlugins(navDataFile, {
     remotePluginsFile,
     currentPath,
   })
   const navNode = getNodeFromPath(currentPath, navData, localContentDir)
-  const { filePath, remoteFile, pluginTier } = navNode
+  const { filePath, remoteFile, pluginData } = navNode
   //  Fetch the MDX file content
   const mdxString = remoteFile
     ? remoteFile.fileString
@@ -49,13 +46,38 @@ async function generateStaticProps({
   const githubFileUrl = remoteFile
     ? remoteFile.sourceUrl
     : `https://github.com/hashicorp/${product.slug}/blob/${mainBranch}/website/${filePath}`
+  // If this is a plugin, and if
+  // the version has been specified as "latest",
+  // determine the tag this corresponds to, so that
+  // we can show this explicit version number in docs
+  const latestReleaseTag =
+    pluginData?.version === 'latest'
+      ? await fetchLatestReleaseTag(pluginData.repo)
+      : pluginData?.version
   // For plugin pages, prefix the MDX content with a
   // label that reflects the plugin tier
   // (current options are "Official" or "Community")
+  // and display whether the plugin is "HCP Packer Ready".
+  // Also add a badge to show the latest version
   function mdxContentHook(mdxContent) {
-    if (pluginTier) {
-      const tierMdx = `<br/><PluginTierLabel tier="${pluginTier}" />\n\n`
-      mdxContent = tierMdx + mdxContent
+    const badgesMdx = []
+    // Add a badge for the plugin tier
+    if (pluginData?.tier) {
+      badgesMdx.push(`<PluginBadge type="${pluginData.tier}" />`)
+    }
+    // Add a badge if the plugin is "HCP Packer Ready"
+    if (pluginData?.isHcpPackerReady) {
+      badgesMdx.push(`<PluginBadge type="hcp_packer_ready" />`)
+    }
+    // Add badge showing the latest release version number
+    if (latestReleaseTag) {
+      badgesMdx.push(`<Badge label="${latestReleaseTag}" theme="light-gray"/>`)
+    }
+    // If we have badges to add, inject them into the MDX
+    if (badgesMdx.length > 0) {
+      const badgeChildrenMdx = badgesMdx.join('')
+      const badgesHeaderMdx = `<BadgesHeader>${badgeChildrenMdx}</BadgesHeader>`
+      mdxContent = badgesHeaderMdx + '\n\n' + mdxContent
     }
     return mdxContent
   }
@@ -76,5 +98,4 @@ async function generateStaticProps({
   }
 }
 
-export default { generateStaticPaths, generateStaticProps }
 export { generateStaticPaths, generateStaticProps }

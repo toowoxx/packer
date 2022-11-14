@@ -4,12 +4,15 @@ package hcp_packer_image
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/hashicorp/hcp-sdk-go/clients/cloud-packer-service/stable/2021-04-30/models"
 	"github.com/hashicorp/packer-plugin-sdk/common"
 	"github.com/hashicorp/packer-plugin-sdk/hcl2helper"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
@@ -25,13 +28,28 @@ type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 	// The name of the bucket your image is in.
 	Bucket string `mapstructure:"bucket_name" required:"true"`
-	// The name of the iteration Id to use when retrieving your image
+	// The name of the channel to use when retrieving your image.
+	// Either this or `iteration_id` MUST be set.
+	// Mutually exclusive with `iteration_id`.
+	// If using several images from a single iteration, you may prefer
+	// sourcing an iteration first, and referencing it for subsequent uses,
+	// as every `hcp_packer_image` with the channel set will generate a
+	// potentially billable HCP Packer request, but if several
+	// `hcp_packer_image`s use a shared `hcp_packer_iteration` that will
+	// only generate one potentially billable request.
+	Channel string `mapstructure:"channel" required:"true"`
+	// The ID of the iteration to use when retrieving your image
+	// Either this or `channel` MUST be set.
+	// Mutually exclusive with `channel`
 	IterationID string `mapstructure:"iteration_id" required:"true"`
 	// The name of the cloud provider that your image is for. For example,
 	// "aws" or "gce".
 	CloudProvider string `mapstructure:"cloud_provider" required:"true"`
 	// The name of the cloud region your image is in. For example "us-east-1".
 	Region string `mapstructure:"region" required:"true"`
+	// The specific Packer builder used to create the image.
+	// For example, "amazon-ebs.example"
+	ComponentType string `mapstructure:"component_type" required:"false"`
 	// TODO: Version          string `mapstructure:"version"`
 	// TODO: Fingerprint          string `mapstructure:"fingerprint"`
 	// TODO: Label          string `mapstructure:"label"`
@@ -52,12 +70,19 @@ func (d *Datasource) Configure(raws ...interface{}) error {
 	if d.config.Bucket == "" {
 		errs = packersdk.MultiErrorAppend(errs, fmt.Errorf("The `bucket_name` must be specified"))
 	}
-	if d.config.IterationID == "" {
-		errs = packersdk.MultiErrorAppend(errs, fmt.Errorf("The `iteration_id`"+
-			" must be specified. If you do not know your iteration_id, you "+
-			"can retrieve it using the bucket name and desired channel using"+
-			" the hcp-packer-iteration data source."))
+
+	// Ensure either channel or iteration_id are set, and not both at the same time
+	if d.config.Channel == "" &&
+		d.config.IterationID == "" {
+		errs = packersdk.MultiErrorAppend(errs, errors.New(
+			"The `iteration_id` or `channel` must be specified."))
 	}
+	if d.config.Channel != "" &&
+		d.config.IterationID != "" {
+		errs = packersdk.MultiErrorAppend(errs, errors.New(
+			"`iteration_id` and `channel` cannot both be specified."))
+	}
+
 	if d.config.Region == "" {
 		errs = packersdk.MultiErrorAppend(errs, fmt.Errorf("`region` is "+
 			"currently a required field."))
@@ -73,7 +98,7 @@ func (d *Datasource) Configure(raws ...interface{}) error {
 	return nil
 }
 
-// Information from []*models.HashicorpCloudPackerImage with some information
+// DatasourceOutput Information from []*models.HashicorpCloudPackerImage with some information
 // from the parent []*models.HashicorpCloudPackerBuild included where it seemed
 // like it might be relevant. Need to copy so we can generate
 type DatasourceOutput struct {
@@ -84,14 +109,17 @@ type DatasourceOutput struct {
 	ComponentType string `mapstructure:"component_type"`
 	// The date and time at which the image was created.
 	CreatedAt string `mapstructure:"created_at"`
-	// The id of the build that created the image. This is a ULID, which is a
+	// The ID of the build that created the image. This is a ULID, which is a
 	// unique identifier similar to a UUID. It is created by the HCP Packer
 	// Registry when an build is first created, and is unique to this build.
 	BuildID string `mapstructure:"build_id"`
-	// The iteration id. This is a ULID, which is a unique identifier similar
+	// The iteration ID. This is a ULID, which is a unique identifier similar
 	// to a UUID. It is created by the HCP Packer Registry when an iteration is
 	// first created, and is unique to this iteration.
 	IterationID string `mapstructure:"iteration_id"`
+	// The ID of the channel used to query the image iteration. This value will be empty if the `iteration_id` was used
+	// directly instead of a channel.
+	ChannelID string `mapstructure:"channel_id"`
 	// The UUID associated with the Packer run that created this image.
 	PackerRunUUID string `mapstructure:"packer_run_uuid"`
 	// ID or URL of the remote cloud image as given by a build.
@@ -116,14 +144,43 @@ func (d *Datasource) Execute() (cty.Value, error) {
 		return cty.NullVal(cty.EmptyObject), err
 	}
 
-	// Load channel.
-	log.Printf("[INFO] Reading info from HCP Packer registry (%s) [project_id=%s, organization_id=%s, iteration_id=%s]",
-		d.config.Bucket, cli.ProjectID, cli.OrganizationID, d.config.IterationID)
+	var iteration *models.HashicorpCloudPackerIteration
+	var channelID string
+	if d.config.IterationID != "" {
+		log.Printf("[INFO] Reading info from HCP Packer registry (%s) [project_id=%s, organization_id=%s, iteration_id=%s]",
+			d.config.Bucket, cli.ProjectID, cli.OrganizationID, d.config.IterationID)
 
-	iteration, err := cli.GetIteration(ctx, d.config.Bucket, packerregistry.GetIteration_byID(d.config.IterationID))
-	if err != nil {
-		return cty.NullVal(cty.EmptyObject), fmt.Errorf("error retrieving "+
-			"image iteration from HCP Packer registry: %s", err.Error())
+		iter, err := cli.GetIteration(ctx, d.config.Bucket, packerregistry.GetIteration_byID(d.config.IterationID))
+		if err != nil {
+			return cty.NullVal(cty.EmptyObject), fmt.Errorf(
+				"error retrieving image iteration from HCP Packer registry: %s",
+				err)
+		}
+		iteration = iter
+	} else {
+		log.Printf("[INFO] Reading info from HCP Packer registry (%s) [project_id=%s, organization_id=%s, channel=%s]",
+			d.config.Bucket, cli.ProjectID, cli.OrganizationID, d.config.Channel)
+
+		channel, err := cli.GetChannel(ctx, d.config.Bucket, d.config.Channel)
+		if err != nil {
+			return cty.NullVal(cty.EmptyObject), fmt.Errorf("error retrieving "+
+				"channel from HCP Packer registry: %s", err.Error())
+		}
+
+		if channel.Iteration == nil {
+			return cty.NullVal(cty.EmptyObject), fmt.Errorf("there is no iteration associated with the channel %s",
+				d.config.Channel)
+		}
+		channelID = channel.ID
+		iteration = channel.Iteration
+	}
+
+	revokeAt := time.Time(iteration.RevokeAt)
+	if !revokeAt.IsZero() && revokeAt.Before(time.Now().UTC()) {
+		// If RevokeAt is not a zero date and is before NOW, it means this iteration is revoked and should not be used
+		// to build new images.
+		return cty.NullVal(cty.EmptyObject), fmt.Errorf("the iteration %s is revoked and can not be used on Packer builds",
+			iteration.ID)
 	}
 
 	output := DatasourceOutput{}
@@ -135,7 +192,7 @@ func (d *Datasource) Execute() (cty.Value, error) {
 		}
 		for _, image := range build.Images {
 			cloudAndRegions[build.CloudProvider] = append(cloudAndRegions[build.CloudProvider], image.Region)
-			if image.Region == d.config.Region {
+			if image.Region == d.config.Region && filterBuildByComponentType(build, d.config.ComponentType) {
 				// This is the desired image.
 				output = DatasourceOutput{
 					CloudProvider: build.CloudProvider,
@@ -143,6 +200,7 @@ func (d *Datasource) Execute() (cty.Value, error) {
 					CreatedAt:     image.CreatedAt.String(),
 					BuildID:       build.ID,
 					IterationID:   build.IterationID,
+					ChannelID:     channelID,
 					PackerRunUUID: build.PackerRunUUID,
 					ID:            image.ImageID,
 					Region:        image.Region,
@@ -154,6 +212,15 @@ func (d *Datasource) Execute() (cty.Value, error) {
 	}
 
 	return cty.NullVal(cty.EmptyObject), fmt.Errorf("could not find a build result matching "+
-		"region (%q) and cloud provider (%q). Available: %v ",
-		d.config.Region, d.config.CloudProvider, cloudAndRegions)
+		"[region=%q, cloud_provider=%q, component_type=%q]. Available: %v ",
+		d.config.Region, d.config.CloudProvider, d.config.ComponentType, cloudAndRegions)
+}
+
+func filterBuildByComponentType(build *models.HashicorpCloudPackerBuild, componentType string) bool {
+	// optional field is not specified, passthrough
+	if componentType == "" {
+		return true
+	}
+	// if specified, only the matched image metadata is returned by this effect
+	return build.ComponentType == componentType
 }

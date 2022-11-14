@@ -135,7 +135,7 @@ look up the output file information.
 ## Customizing the iso using the virtualbox-ovf builder
 
 That output filename generated in the first stage can be used as the
-[source_path](/docs/builders/virtualbox/ovf#source_path)
+[source_path](/plugins/builders/virtualbox/ovf#source_path)
 for the virtualbox-ovf builder.
 
 <Tabs>
@@ -287,7 +287,7 @@ sources.pkr.hcl
 
 source "docker" "example" {
   commit = true
-  // any other configuration you want for your docker containers
+  // any other configuration you want for your Docker containers
 }
 ```
 
@@ -314,7 +314,7 @@ build {
   }
 
   // Make sure that the output from your build can be used in the next build.
-  // In this example, we're tagging the docker image so that the step-2
+  // In this example, we're tagging the Docker image so that the step-2
   // builder can find it without us having to track it down in a manifest.
   post-processor "docker-tag" {
     repository = "ubuntu"
@@ -350,4 +350,6 @@ packer build -only='step1.docker.example' .
 packer build -only='step2.docker.example' .
 ```
 
-To run the pipeline, call pipeline.sh. You can create as many build steps as you want. Each can either inhabit one file
+To run the pipeline, call pipeline.sh. You can create as many build steps as
+you want. Each can either inhabit one file, or you can put multiple steps in
+a single file like shown in the example above.

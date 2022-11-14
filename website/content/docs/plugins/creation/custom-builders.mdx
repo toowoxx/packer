@@ -7,25 +7,19 @@ page_title: Custom Builders - Extending
 
 # Custom Builders
 
-Packer Builders are the components of Packer responsible for creating a
-virtual machine, bringing it to a point where it can be provisioned, and then
-turning that provisioned virtual machine into a machine image. Several builders
-are officially maintained and distributed by the HashiCorp Packer team -- among
-these are builders for creating images on Amazon EC2, VMWare, Google
-Compute Engine, and many more. You can find documentation for how to use these
-official builders [here](/docs/builders). It is also possible to write custom
-builders using the Packer plugin interface, and this page documents how to do
-that.
+Packer builders are responsible for creating a virtual machine, setting the virtual machine up for provisioning, and then turning that provisioned virtual machine into a machine image. We officially maintain and distribute several builders, including builders to create images on Amazon EC2, VMware, Google
+Compute Engine, and many more. Refer to the [Builders](/docs/builders) documentation for details.
 
-Prior to reading this page, you should read the page on [plugin development
-basics](/docs/extending/plugins).
+This page explains how to use the Packer plugin interface to write custom builders. If you want your builder to support HashiCorp Cloud Platform (HCP) Packer, you should also review the [HCP Packer Support](/docs/plugins/creation/hcp-support) documentation.
 
-~> **Warning!** This is an advanced topic. If you're new to Packer, we
-recommend getting comfortable with using Packer and its officially maintained
-plugins before you dive into writing plugins of your own.
+~> **Warning:** This is an advanced topic that requires strong knowledge of Packer and Packer plugins.
 
-Custom plugins are written in [golang](https://golang.org/), so this guide
-assumes that you have some familiarity with that programming language.
+## Before You Begin
+
+We recommend reviewing the following resources before you begin development:
+
+- [Developing Plugins - Overview](/docs/plugins/creation)
+- The [Go](https://go.dev/) language. You must write custom plugins in Go, so this guide assumes you are familiar with the language.
 
 ## The Interface
 
@@ -175,7 +169,7 @@ about the artifact results and to determine whether they are even able to run
 against a given artifact, so it is important that this ID never changes once
 the builder is published.
 
-The builder ID for each builder is documented on its website docs page.
+The builder ID for each builder is included on the associated documentation page.
 
 ## Provisioning
 
@@ -312,5 +306,5 @@ order to make it available to the Packer core as a plugin. We have created a
 [scaffolding](https://github.com/hashicorp/packer-plugin-scaffolding/blob/main/builder/scaffolding/builder.go)
 repo to give you an idea of the relationship between the builder
 implementation and the server implementation within a repository, and then read
-[basics of how Plugins work](/docs/extending/plugins), which breaks down all the
+[basics of how Plugins work](/docs/plugins/install-plugins), which breaks down all the
 server details.

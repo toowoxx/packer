@@ -12,12 +12,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclparse"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
-	"github.com/hashicorp/packer-plugin-sdk/template"
-	"github.com/hashicorp/packer/hcl2template"
 	"github.com/hashicorp/packer/packer"
-	"github.com/hashicorp/packer/version"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/hako/durafmt"
@@ -62,17 +58,6 @@ func (c *BuildCommand) ParseArgs(args []string) (*BuildArgs, int) {
 	return &cfg, 0
 }
 
-func (m *Meta) GetConfigFromHCL(cla *MetaArgs) (*hcl2template.PackerConfig, int) {
-	parser := &hcl2template.Parser{
-		CorePackerVersion:       version.SemVer,
-		CorePackerVersionString: version.FormattedVersion(),
-		Parser:                  hclparse.NewParser(),
-		PluginConfig:            m.CoreConfig.Components.PluginConfig,
-	}
-	cfg, diags := parser.Parse(cla.Path, cla.VarFiles, cla.Vars)
-	return cfg, writeDiags(m.Ui, parser.Files(), diags)
-}
-
 func writeDiags(ui packersdk.Ui, files map[string]*hcl.File, diags hcl.Diagnostics) int {
 	// write HCL errors/diagnostics if any.
 	b := bytes.NewBuffer(nil)
@@ -91,59 +76,6 @@ func writeDiags(ui packersdk.Ui, files map[string]*hcl.File, diags hcl.Diagnosti
 	return 0
 }
 
-func (m *Meta) GetConfig(cla *MetaArgs) (packer.Handler, int) {
-	cfgType, err := cla.GetConfigType()
-	if err != nil {
-		m.Ui.Error(fmt.Sprintf("%q: %s", cla.Path, err))
-		return nil, 1
-	}
-
-	switch cfgType {
-	case ConfigTypeHCL2:
-		// TODO(azr): allow to pass a slice of files here.
-		return m.GetConfigFromHCL(cla)
-	default:
-		// TODO: uncomment once we've polished HCL a bit more.
-		// c.Ui.Say(`Legacy JSON Configuration Will Be Used.
-		// The template will be parsed in the legacy configuration style. This style
-		// will continue to work but users are encouraged to move to the new style.
-		// See: https://packer.io/guides/hcl
-		// `)
-		return m.GetConfigFromJSON(cla)
-	}
-}
-
-func (m *Meta) GetConfigFromJSON(cla *MetaArgs) (packer.Handler, int) {
-	// Parse the template
-	var tpl *template.Template
-	var err error
-	if cla.Path == "" {
-		// here cla validation passed so this means we want a default builder
-		// and we probably are in the console command
-		tpl, err = template.Parse(TiniestBuilder)
-	} else {
-		tpl, err = template.ParseFile(cla.Path)
-	}
-
-	if err != nil {
-		m.Ui.Error(fmt.Sprintf("Failed to parse file as legacy JSON template: "+
-			"if you are using an HCL template, check your file extensions; they "+
-			"should be either *.pkr.hcl or *.pkr.json; see the docs for more "+
-			"details: https://www.packer.io/docs/templates/hcl_templates. \n"+
-			"Original error: %s", err))
-		return nil, 1
-	}
-
-	// Get the core
-	core, err := m.Core(tpl, cla)
-	ret := 0
-	if err != nil {
-		m.Ui.Error(err.Error())
-		ret = 1
-	}
-	return &CoreWrapper{core}, ret
-}
-
 func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int {
 	packerStarter, ret := c.GetConfig(&cla.MetaArgs)
 	if ret != 0 {
@@ -151,6 +83,12 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 	}
 
 	diags := packerStarter.Initialize(packer.InitializeOptions{})
+	ret = writeDiags(c.Ui, nil, diags)
+	if ret != 0 {
+		return ret
+	}
+
+	diags = TrySetupHCP(packerStarter)
 	ret = writeDiags(c.Ui, nil, diags)
 	if ret != 0 {
 		return ret
@@ -170,8 +108,10 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 		if err := ArtifactMetadataPublisher.Initialize(buildCtx); err != nil {
 			diags := hcl.Diagnostics{
 				&hcl.Diagnostic{
-					Summary:  "HCP Packer Registry iteration initialization failed",
-					Detail:   fmt.Sprintf("Failed to initialize iteration for %q\n %s", ArtifactMetadataPublisher.Slug, err),
+					Summary: "Failed to get HCP Packer Registry iteration",
+					Detail: fmt.Sprintf("Packer could not create an iteration or "+
+						"link the build to an existing iteration. Contact HCP Packer "+
+						"support for further assistance.\nError: %s", err),
 					Severity: hcl.DiagError,
 				},
 			}
@@ -190,6 +130,9 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 	// here, something could have gone wrong but we still want to run valid
 	// builds.
 	ret = writeDiags(c.Ui, nil, diags)
+	if len(builds) == 0 && ret != 0 {
+		return ret
+	}
 
 	if cla.Debug {
 		c.Ui.Say("Debug mode enabled. Builds will not be parallelized.")
@@ -201,8 +144,10 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 		if err := ArtifactMetadataPublisher.PopulateIteration(buildCtx); err != nil {
 			diags := hcl.Diagnostics{
 				&hcl.Diagnostic{
-					Summary:  "HCP Packer Registry build initialization failed",
-					Detail:   fmt.Sprintf("Failed to initialize build for %q\n %s", ArtifactMetadataPublisher.Slug, err),
+					Summary: "Failed to register builds to the HCP Packer registry iteration",
+					Detail: fmt.Sprintf("Packer could not register builds within your "+
+						"configuration to the iteration. Contact HCP Packer support "+
+						"for further assistance.\nError: %s", err),
 					Severity: hcl.DiagError,
 				},
 			}
@@ -247,6 +192,18 @@ func (c *BuildCommand) RunContext(buildCtx context.Context, cla *BuildArgs) int 
 	log.Printf("Build debug mode: %v", cla.Debug)
 	log.Printf("Force build: %v", cla.Force)
 	log.Printf("On error: %v", cla.OnError)
+
+	if len(builds) == 0 {
+		return writeDiags(c.Ui, nil, hcl.Diagnostics{
+			&hcl.Diagnostic{
+				Summary: "No builds to run",
+				Detail: "A build command cannot run without at least one build to process. " +
+					"If the only or except flags have been specified at run time check that" +
+					" at least one build is selected for execution.",
+				Severity: hcl.DiagError,
+			},
+		})
+	}
 
 	// Get the start of the build command
 	buildCommandStart := time.Now()

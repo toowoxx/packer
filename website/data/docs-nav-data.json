@@ -1,5 +1,26 @@
 [
   {
+    "title": "What is Packer?",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "intro"
+      },
+      {
+        "title": "Why Use Packer?",
+        "path": "intro/why"
+      },
+      {
+        "title": "Use Cases",
+        "path": "intro/use-cases"
+      }
+    ]
+  },
+  {
+    "title": "HCP Packer",
+    "path": "hcp"
+  },
+  {
     "divider": true
   },
   {
@@ -155,10 +176,6 @@
                 "title": "Contextual Functions",
                 "routes": [
                   {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/contextual"
-                  },
-                  {
                     "title": "aws_secretsmanager",
                     "path": "templates/hcl_templates/functions/contextual/aws_secretsmanager"
                   },
@@ -179,10 +196,6 @@
               {
                 "title": "Numeric Functions",
                 "routes": [
-                  {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/numeric"
-                  },
                   {
                     "title": "abs",
                     "path": "templates/hcl_templates/functions/numeric/abs"
@@ -224,10 +237,6 @@
               {
                 "title": "String Functions",
                 "routes": [
-                  {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/string"
-                  },
                   {
                     "title": "chomp",
                     "path": "templates/hcl_templates/functions/string/chomp"
@@ -309,10 +318,6 @@
               {
                 "title": "Collection Functions",
                 "routes": [
-                  {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/collection"
-                  },
                   {
                     "title": "chunklist",
                     "path": "templates/hcl_templates/functions/collection/chunklist"
@@ -411,10 +416,6 @@
                 "title": "Encoding Functions",
                 "routes": [
                   {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/encoding"
-                  },
-                  {
                     "title": "base64decode",
                     "path": "templates/hcl_templates/functions/encoding/base64decode"
                   },
@@ -451,10 +452,6 @@
               {
                 "title": "Filesystem Functions",
                 "routes": [
-                  {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/file"
-                  },
                   {
                     "title": "abspath",
                     "path": "templates/hcl_templates/functions/file/abspath"
@@ -518,10 +515,6 @@
                 "title": "Hash and Crypto Functions",
                 "routes": [
                   {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/crypto"
-                  },
-                  {
                     "title": "bcrypt",
                     "path": "templates/hcl_templates/functions/crypto/bcrypt"
                   },
@@ -551,10 +544,6 @@
                 "title": "UUID Functions",
                 "routes": [
                   {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/uuid"
-                  },
-                  {
                     "title": "uuidv4",
                     "path": "templates/hcl_templates/functions/uuid/uuidv4"
                   },
@@ -567,10 +556,6 @@
               {
                 "title": "IP Network Functions",
                 "routes": [
-                  {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/ipnet"
-                  },
                   {
                     "title": "cidrhost",
                     "path": "templates/hcl_templates/functions/ipnet/cidrhost"
@@ -592,10 +577,6 @@
               {
                 "title": "Type Conversion Functions",
                 "routes": [
-                  {
-                    "title": "Overview",
-                    "path": "templates/hcl_templates/functions/conversion"
-                  },
                   {
                     "title": "can",
                     "path": "templates/hcl_templates/functions/conversion/can"
@@ -758,6 +739,10 @@
             "hidden": true
           }
         ]
+      },
+      {
+        "title": "HTTP",
+        "path": "datasources/http"
       }
     ]
   },
@@ -840,10 +825,6 @@
     ]
   },
   {
-    "title": "External Plugins",
-    "href": "/plugins"
-  },
-  {
     "divider": true
   },
   {
@@ -858,14 +839,22 @@
     "divider": true
   },
   {
-    "title": "Packer Plugins",
+    "title": "Plugins",
     "routes": [
       {
         "title": "Overview",
         "path": "plugins"
       },
       {
-        "title": "Extending Packer",
+        "title": "Installing Plugins",
+        "path": "plugins/install-plugins"
+      },
+      {
+        "title": "External Plugins",
+        "href": "/plugins"
+      },
+      {
+        "title": "Developing Plugins",
         "routes": [
           {
             "title": "Overview",
@@ -886,12 +875,12 @@
           {
             "title": "Custom Data Sources",
             "path": "plugins/creation/custom-datasources"
+          },
+          {
+            "title": "HCP Packer Support",
+            "path": "plugins/creation/hcp-support"
           }
         ]
-      },
-      {
-        "title": "HCP Packer Support",
-        "path": "plugins/hcp-support"
       }
     ]
   },
@@ -905,9 +894,5 @@
   {
     "title": "Debugging",
     "path": "debugging"
-  },
-  {
-    "title": "HCP Packer",
-    "href": "https://cloud.hashicorp.com/docs/packer"
   }
 ]

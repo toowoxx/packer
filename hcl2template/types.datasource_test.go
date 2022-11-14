@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
+	"github.com/hashicorp/packer/builder/null"
+	"github.com/hashicorp/packer/packer"
 )
 
 func TestParse_datasource(t *testing.T) {
@@ -16,7 +18,28 @@ func TestParse_datasource(t *testing.T) {
 			parseTestArgs{"testdata/datasources/basic.pkr.hcl", nil, nil},
 			&PackerConfig{
 				CorePackerVersionString: lockedVersion,
-				Basedir:                 filepath.Join("testdata", "datasources"),
+				Builds: Builds{
+					&BuildBlock{
+						Sources: []SourceUseBlock{
+							{
+								SourceRef: SourceRef{
+									Type: "null",
+									Name: "test",
+								},
+							},
+						},
+					},
+				},
+				Sources: map[SourceRef]SourceBlock{
+					{
+						Type: "null",
+						Name: "test",
+					}: {
+						Type: "null",
+						Name: "test",
+					},
+				},
+				Basedir: filepath.Join("testdata", "datasources"),
 				Datasources: Datasources{
 					{
 						Type: "amazon-ami",
@@ -28,7 +51,15 @@ func TestParse_datasource(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{},
+			[]packersdk.Build{
+				&packer.CoreBuild{
+					Type:           "null.test",
+					Builder:        &null.Builder{},
+					Provisioners:   []packer.CoreBuildProvisioner{},
+					PostProcessors: [][]packer.CoreBuildPostProcessor{},
+					Prepared:       true,
+				},
+			},
 			false,
 		},
 		{"recursive datasources",
@@ -36,7 +67,28 @@ func TestParse_datasource(t *testing.T) {
 			parseTestArgs{"testdata/datasources/recursive.pkr.hcl", nil, nil},
 			&PackerConfig{
 				CorePackerVersionString: lockedVersion,
-				Basedir:                 filepath.Join("testdata", "datasources"),
+				Builds: Builds{
+					&BuildBlock{
+						Sources: []SourceUseBlock{
+							{
+								SourceRef: SourceRef{
+									Type: "null",
+									Name: "test",
+								},
+							},
+						},
+					},
+				},
+				Sources: map[SourceRef]SourceBlock{
+					{
+						Type: "null",
+						Name: "test",
+					}: {
+						Type: "null",
+						Name: "test",
+					},
+				},
+				Basedir: filepath.Join("testdata", "datasources"),
 				Datasources: Datasources{
 					{
 						Type: "null",
@@ -76,7 +128,15 @@ func TestParse_datasource(t *testing.T) {
 				},
 			},
 			false, false,
-			[]packersdk.Build{},
+			[]packersdk.Build{
+				&packer.CoreBuild{
+					Type:           "null.test",
+					Builder:        &null.Builder{},
+					Provisioners:   []packer.CoreBuildProvisioner{},
+					PostProcessors: [][]packer.CoreBuildPostProcessor{},
+					Prepared:       true,
+				},
+			},
 			false,
 		},
 		{"untyped datasource",

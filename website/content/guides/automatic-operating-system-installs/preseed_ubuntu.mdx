@@ -23,9 +23,9 @@ for the official documentation.
 
 If you are installing the operating system from a mounted iso as part of
 your Packer build, you will need to use a preseed file. For example, you're
-building an image from scratch using the [vmware-iso](/docs/builders/vmware-iso),
-[virtualbox-iso](/docs/builders/virtualbox-iso), or
-[hyperv-iso](/docs/builders/hyperv-iso) builders.
+building an image from scratch using the [vmware-iso](/plugins/builders/vmware/iso),
+[virtualbox-iso](/plugins/builders/virtualbox/iso), or
+[hyperv-iso](/plugins/builders/hyperv/iso) builders.
 
 If you are not installing the operating system, you won't need to provide a
 preseed file. If you are using a pre-built image in a cloud, you don't need to
@@ -49,7 +49,7 @@ You then reference the file using a `boot_command` to kick off the installation.
 In the example below, see how the `preseed/url` command line option is being
 used in the `/install/vmlinuz command`. The `{{ .HTTPIP }}` and
 `{{ .HTTPPort }}` options are special Packer template options that will get set
-by Packer to point to the http server we create, so that your boot command can
+by Packer to point to the HTTP server we create, so that your boot command can
 access it. For an example of a working boot_command, see the Examples section
 below. For more information on how boot_command works, see the
 boot_command section of the docs for whatever builder you are using.

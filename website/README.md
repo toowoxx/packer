@@ -1,8 +1,6 @@
 # Packer Documentation Website
 
-[![Netlify Status](https://img.shields.io/netlify/0b9f9a3b-9bea-4889-8ad0-9c79583cb70e?style=flat-square)](https://app.netlify.com/sites/packer-www/deploys)
-
-This subdirectory contains the entire source for the [Packer Website](https://packer.io/). This is a [NextJS](https://nextjs.org/) project, which builds a static site from these source files.
+This subdirectory contains the content for the [Packer Website](https://packer.io/).
 
 <!--
   This readme file contains several blocks of generated text, to make it easier to share common information
@@ -47,11 +45,11 @@ The website can be run locally through node.js or [Docker](https://www.docker.co
 
 Running the site locally is simple. Provided you have Docker installed, clone this repo, run `make`, and then visit `http://localhost:3000`.
 
-The docker image is pre-built with all the website dependencies installed, which is what makes it so quick and simple, but also means if you need to change dependencies and test the changes within Docker, you'll need a new image. If this is something you need to do, you can run `make build-image` to generate a local Docker image with updated dependencies, then `make website-local` to use that image and preview.
+The Docker image is pre-built with all the website dependencies installed, which is what makes it so quick and simple, but also means if you need to change dependencies and test the changes within Docker, you'll need a new image. If this is something you need to do, you can run `make build-image` to generate a local Docker image with updated dependencies, then `make website-local` to use that image and preview.
 
 ### With Node
 
-If your local development environment has a supported version (v10.0.0+) of [node installed](https://nodejs.org/en/) you can run:
+If your local development environment has a supported version (v16+) of [node installed](https://nodejs.org/en/) you can run:
 
 - `npm install`
 - `npm start`
@@ -80,7 +78,6 @@ This file can be standard Markdown and also supports [YAML frontmatter](https://
 title: 'My Title'
 description: "A thorough, yet succinct description of the page's contents"
 ---
-
 ```
 
 The significant keys in the YAML frontmatter are:

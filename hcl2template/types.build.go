@@ -6,8 +6,6 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	packerregistry "github.com/hashicorp/packer/internal/registry"
-	"github.com/hashicorp/packer/internal/registry/env"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -112,7 +110,16 @@ func (p *Parser) decodeBuildConfig(block *hcl.Block, cfg *PackerConfig) (*BuildB
 		"name": cty.StringVal(b.Name),
 	})
 
+	// We rely on `hadSource` to determine which error to proc.
+	//
+	// If a source block is referenced in the build block, but isn't valid, we
+	// cannot rely on the `build.Sources' since it's only populated when a valid
+	// source is processed.
+	hadSource := false
+
 	for _, buildFrom := range b.FromSources {
+		hadSource = true
+
 		ref := sourceRefFromString(buildFrom)
 
 		if ref == NoSource ||
@@ -158,6 +165,7 @@ func (p *Parser) decodeBuildConfig(block *hcl.Block, cfg *PackerConfig) (*BuildB
 			}
 			build.HCPPackerRegistry = hcpPackerRegistry
 		case sourceLabel:
+			hadSource = true
 			ref, moreDiags := p.decodeBuildSource(block)
 			diags = append(diags, moreDiags...)
 			if moreDiags.HasErrors() {
@@ -218,41 +226,13 @@ func (p *Parser) decodeBuildConfig(block *hcl.Block, cfg *PackerConfig) (*BuildB
 		}
 	}
 
-	// Creates a bucket if either a hcp_packer_registry block is set or the HCP
-	// Packer registry is enabled via environment variable
-	if build.HCPPackerRegistry != nil || env.IsPAREnabled() {
-		var err error
-		cfg.bucket, err = packerregistry.NewBucketWithIteration(packerregistry.IterationOptions{
-			TemplateBaseDir: cfg.Basedir,
+	if !hadSource {
+		diags = append(diags, &hcl.Diagnostic{
+			Summary:  "missing source reference",
+			Detail:   "a build block must reference at least one source to be built",
+			Severity: hcl.DiagError,
+			Subject:  block.DefRange.Ptr(),
 		})
-
-		if err != nil {
-			diags = append(diags, &hcl.Diagnostic{
-				Summary:  "Unable to create a valid bucket object for HCP Packer Registry",
-				Detail:   fmt.Sprintf("%s", err),
-				Severity: hcl.DiagError,
-			})
-
-			return build, diags
-		}
-
-		cfg.bucket.LoadDefaultSettingsFromEnv()
-		build.HCPPackerRegistry.WriteToBucketConfig(cfg.bucket)
-
-		// If at this point the bucket.Slug is still empty,
-		// last try is to use the build.Name if present
-		if cfg.bucket.Slug == "" && build.Name != "" {
-			cfg.bucket.Slug = build.Name
-		}
-
-		// If the description is empty, use the one from the build block
-		if cfg.bucket.Description == "" {
-			cfg.bucket.Description = build.Description
-		}
-
-		for _, source := range build.Sources {
-			cfg.bucket.RegisterBuildForComponent(source.String())
-		}
 	}
 
 	return build, diags

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hashicorp/hcp-sdk-go/clients/cloud-packer-service/preview/2021-04-30/models"
+	"github.com/hashicorp/hcp-sdk-go/clients/cloud-packer-service/stable/2021-04-30/models"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	registryimage "github.com/hashicorp/packer-plugin-sdk/packer/registry/image"
 	packerregistry "github.com/hashicorp/packer/internal/registry"
@@ -48,6 +48,14 @@ func (b *RegistryBuilder) Run(ctx context.Context, ui packersdk.Ui, hook packers
 
 	if err := b.ArtifactMetadataPublisher.UpdateBuildStatus(ctx, b.Name, models.HashicorpCloudPackerBuildStatusRUNNING); err != nil {
 		log.Printf("[TRACE] failed to update HCP Packer registry status for %q: %s", b.Name, err)
+	}
+
+	cleanupHeartbeat, err := b.ArtifactMetadataPublisher.HeartbeatBuild(ctx, b.Name)
+	if err != nil {
+		log.Printf("[ERROR] failed to start heartbeat function")
+	}
+	if cleanupHeartbeat != nil {
+		defer cleanupHeartbeat()
 	}
 
 	ui.Say(fmt.Sprintf("Publishing build details for %s to the HCP Packer registry", b.Name))

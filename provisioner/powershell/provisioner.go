@@ -28,8 +28,6 @@ import (
 	"github.com/hashicorp/packer-plugin-sdk/uuid"
 )
 
-var retryableSleep = 2 * time.Second
-
 var psEscape = strings.NewReplacer(
 	"$", "`$",
 	"\"", "`\"",
@@ -88,6 +86,12 @@ type Config struct {
 	//    ```
 	DebugMode int `mapstructure:"debug_mode"`
 
+	// A duration of how long to pause after the provisioner
+	PauseAfter time.Duration `mapstructure:"pause_after"`
+
+	// Run pwsh.exe instead of powershell.exe - latest version of powershell.
+	UsePwsh bool `mapstructure:"use_pwsh"`
+
 	ctx interpolate.Context
 }
 
@@ -111,7 +115,12 @@ func (p *Provisioner) defaultExecuteCommand() string {
 		return baseCmd
 	}
 
-	return fmt.Sprintf(`powershell -executionpolicy %s "%s"`, p.config.ExecutionPolicy, baseCmd)
+	if p.config.UsePwsh {
+		return fmt.Sprintf(`pwsh -executionpolicy %s -command "%s"`, p.config.ExecutionPolicy, baseCmd)
+	} else {
+		return fmt.Sprintf(`powershell -executionpolicy %s "%s"`, p.config.ExecutionPolicy, baseCmd)
+	}
+
 }
 
 func (p *Provisioner) ConfigSpec() hcldec.ObjectSpec { return p.config.FlatMapstructure().HCL2Spec() }
@@ -259,7 +268,7 @@ func extractScript(p *Provisioner) (string, error) {
 }
 
 func (p *Provisioner) Provision(ctx context.Context, ui packersdk.Ui, comm packersdk.Communicator, generatedData map[string]interface{}) error {
-	ui.Say(fmt.Sprintf("Provisioning with Powershell..."))
+	ui.Say("Provisioning with Powershell...")
 	p.communicator = comm
 	p.generatedData = generatedData
 
@@ -351,6 +360,11 @@ func (p *Provisioner) Provision(ctx context.Context, ui packersdk.Ui, comm packe
 		log.Printf("remote cleanup script failed to upload; skipping the removal of temporary files: %s; ", strings.Join(uploadedScripts, ","))
 	}
 
+	if p.config.PauseAfter != 0 {
+		ui.Say(fmt.Sprintf("Pausing %s after this provisioner...", p.config.PauseAfter))
+		time.Sleep(p.config.PauseAfter)
+	}
+
 	return nil
 }
 
@@ -437,6 +451,18 @@ func (p *Provisioner) createFlattenedEnvVars(elevated bool) (flattened string) {
 				escapedEnvVarValue)
 		}
 		envVars[keyValue[0]] = escapedEnvVarValue
+	}
+
+	for k, v := range p.config.Env {
+		envVarName, err := interpolate.Render(k, &p.config.ctx)
+		if err != nil {
+			return
+		}
+		envVarValue, err := interpolate.Render(v, &p.config.ctx)
+		if err != nil {
+			return
+		}
+		envVars[envVarName] = psEscape.Replace(envVarValue)
 	}
 
 	// Create a list of env var keys in sorted order

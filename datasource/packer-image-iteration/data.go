@@ -6,11 +6,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/hcl/v2/hcldec"
-	"github.com/hashicorp/hcp-sdk-go/clients/cloud-packer-service/preview/2021-04-30/models"
+	"github.com/hashicorp/hcp-sdk-go/clients/cloud-packer-service/stable/2021-04-30/models"
 	"github.com/hashicorp/packer-plugin-sdk/common"
 	"github.com/hashicorp/packer-plugin-sdk/hcl2helper"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
@@ -70,14 +71,14 @@ type ParBuild struct {
 	ComponentType string `mapstructure:"component_type"`
 	// The date and time at which the build was run.
 	CreatedAt string `mapstructure:"created_at"`
-	// The build id. This is a ULID, which is a unique identifier similar
+	// The build ID. This is a ULID, which is a unique identifier similar
 	// to a UUID. It is created by the HCP Packer Registry when an build is
 	// first created, and is unique to this build.
 	ID string `mapstructure:"id"`
 	// A list of images as stored in the HCP Packer registry. See the ParImage
 	// docs for more information.
 	Images []ParImage `mapstructure:"images"`
-	// The iteration id. This is a ULID, which is a unique identifier similar
+	// The iteration ID. This is a ULID, which is a unique identifier similar
 	// to a UUID. It is created by the HCP Packer Registry when an iteration is
 	// first created, and is unique to this iteration.
 	IterationID string `mapstructure:"iteration_id"`
@@ -98,7 +99,7 @@ type ParBuild struct {
 type ParImage struct {
 	// The date and time at which the build was last updated.
 	CreatedAt string `mapstructure:"created_at,omitempty"`
-	// The iteration id. This is a ULID, which is a unique identifier similar
+	// The iteration ID. This is a ULID, which is a unique identifier similar
 	// to a UUID. It is created by the HCP Packer Registry when an iteration is
 	// first created, and is unique to this iteration.
 	ID string `mapstructure:"id,omitempty"`
@@ -111,7 +112,7 @@ type ParImage struct {
 }
 
 type DatasourceOutput struct {
-	// The iteration id. This is a ULID, which is a unique identifier similar
+	// The iteration ID. This is a ULID, which is a unique identifier similar
 	// to a UUID. It is created by the HCP Packer Registry when an iteration is
 	// first created, and is unique to this iteration.
 	Id string `mapstructure:"Id"`
@@ -124,7 +125,7 @@ type DatasourceOutput struct {
 	// The date the iteration was created.
 	CreatedAt string `mapstructure:"created_at"`
 	// A list of builds that are stored in the iteration. These builds can be
-	// parsed using HCL to find individual image ids for specific providers.
+	// parsed using HCL to find individual image IDs for specific providers.
 	Builds []ParBuild `mapstructure:"builds"`
 }
 
@@ -143,11 +144,29 @@ func (d *DeactivatedDatasource) Execute() (cty.Value, error) {
 	log.Printf("[INFO] Reading info from HCP Packer registry (%s) [project_id=%s, organization_id=%s, channel=%s]",
 		d.config.Bucket, cli.ProjectID, cli.OrganizationID, d.config.Channel)
 
-	iteration, err := cli.GetIterationFromChannel(ctx, d.config.Bucket, d.config.Channel)
+	channel, err := cli.GetChannel(ctx, d.config.Bucket, d.config.Channel)
 	if err != nil {
 		return cty.NullVal(cty.EmptyObject), fmt.Errorf("error retrieving "+
-			"image iteration from HCP Packer registry: %s", err.Error())
+			"channel from HCP Packer registry: %s", err.Error())
 	}
+
+	var iteration *models.HashicorpCloudPackerIteration
+	if channel != nil {
+		if channel.Iteration != nil {
+			iteration = channel.Iteration
+		}
+		return cty.NullVal(cty.EmptyObject), fmt.Errorf("there is no iteration associated with the channel %s",
+			d.config.Channel)
+	}
+
+	revokeAt := time.Time(iteration.RevokeAt)
+	if !revokeAt.IsZero() && revokeAt.Before(time.Now().UTC()) {
+		// If RevokeAt is not a zero date and is before NOW, it means this iteration is revoked and should not be used
+		// to build new images.
+		return cty.NullVal(cty.EmptyObject), fmt.Errorf("the iteration associated with the channel %s is revoked and can not be used on Packer builds",
+			d.config.Channel)
+	}
+
 	output := DatasourceOutput{
 		IncrementalVersion: iteration.IncrementalVersion,
 		CreatedAt:          iteration.CreatedAt.String(),

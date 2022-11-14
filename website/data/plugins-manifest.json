@@ -7,7 +7,7 @@
     "version": "latest"
   },
   {
-    "title": "Alicloud",
+    "title": "Alibaba Cloud",
     "path": "alicloud",
     "repo": "hashicorp/packer-plugin-alicloud",
     "pluginTier": "community",
@@ -18,7 +18,7 @@
     "path": "anka",
     "repo": "veertuinc/packer-plugin-veertu-anka",
     "pluginTier": "community",
-    "source_branch": "master",
+    "sourceBranch": "master",
     "version": "latest"
   },
   {
@@ -50,7 +50,7 @@
     "archived": true
   },
   {
-    "title": "Cloudstack",
+    "title": "CloudStack",
     "path": "cloudstack",
     "repo": "hashicorp/packer-plugin-cloudstack",
     "pluginTier": "community",
@@ -67,8 +67,8 @@
   {
     "title": "DigitalOcean",
     "path": "digitalocean",
-    "repo": "hashicorp/packer-plugin-digitalocean",
-    "pluginTier": "community",
+    "repo": "digitalocean/packer-plugin-digitalocean",
+    "pluginTier": "verified",
     "version": "latest",
     "isHcpPackerReady": true
   },
@@ -94,6 +94,14 @@
     "isHcpPackerReady": true
   },
   {
+    "title": "Gridscale",
+    "path": "gridscale",
+    "repo": "gridscale/packer-plugin-gridscale",
+    "version": "latest",
+    "pluginTier": "verified",
+    "isHcpPackerReady": false
+  },
+  {
     "title": "HashiCups",
     "path": "hashicups",
     "repo": "hashicorp/packer-plugin-hashicups",
@@ -101,19 +109,11 @@
     "isHcpPackerReady": false
   },
   {
-    "title": "hcloud",
+    "title": "Hetzner Cloud",
     "path": "hetzner-cloud",
     "repo": "hashicorp/packer-plugin-hcloud",
     "version": "latest",
     "pluginTier": "community"
-  },
-  {
-    "title": "HuaweiCloud",
-    "path": "huaweicloud",
-    "repo": "huaweicloud/packer-plugin-huaweicloud",
-    "version": "latest",
-    "pluginTier": "community",
-    "sourceBranch": "master"
   },
   {
     "title": "HyperOne",
@@ -156,6 +156,14 @@
     "path": "linode",
     "repo": "hashicorp/packer-plugin-linode",
     "pluginTier": "community",
+    "version": "latest",
+    "isHcpPackerReady": true
+  },
+  {
+    "title": "Libvirt",
+    "path": "libvirt",
+    "repo": "thomasklein94/packer-plugin-libvirt",
+    "pluginTier": "community",
     "version": "latest"
   },
   {
@@ -173,6 +181,13 @@
     "version": "latest"
   },
   {
+    "title": "Mondoo",
+    "path": "mondoo",
+    "repo": "mondoohq/packer-plugin-mondoo",
+    "pluginTier": "verified",
+    "version": "latest"
+  },
+  {
     "title": "Naver Cloud",
     "path": "ncloud",
     "repo": "hashicorp/packer-plugin-ncloud",
@@ -180,7 +195,7 @@
     "version": "latest"
   },
   {
-    "title": "Openstack",
+    "title": "OpenStack",
     "path": "openstack",
     "repo": "hashicorp/packer-plugin-openstack",
     "pluginTier": "community",
@@ -197,7 +212,7 @@
     "title": "Outscale",
     "path": "outscale",
     "repo": "outscale/packer-plugin-outscale",
-    "version": "latest",
+    "version": "v1.0.2",
     "pluginTier": "verified"
   },
   {
@@ -254,7 +269,7 @@
     "path": "sshkey",
     "repo": "ivoronin/packer-plugin-sshkey",
     "pluginTier": "community",
-    "version": "latest"
+    "version": "v1.0.1"
   },
   {
     "title": "Tencent Cloud",
@@ -283,7 +298,8 @@
     "repo": "UpCloudLtd/packer-plugin-upcloud",
     "version": "latest",
     "pluginTier": "verified",
-    "sourceBranch": "master"
+    "sourceBranch": "master",
+    "isHcpPackerReady": true
   },
   {
     "title": "Vagrant",

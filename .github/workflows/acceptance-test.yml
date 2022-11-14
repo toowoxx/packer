@@ -10,6 +10,9 @@ on:
   # Runs against the default branch every day at midnight
   - cron: "0 0 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   get-go-version:
     runs-on: ubuntu-latest
@@ -34,11 +37,6 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.TESTACC_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.TESTACC_AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.TESTACC_AWS_REGION }}
-      # HCP Creds for Acceptance Tests
-      HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
-      HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
-      HCP_ORG_ID: ${{ secrets.HCP_ORG_ID }}
-      HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
@@ -61,6 +59,8 @@ jobs:
           PACKER_ACC=1 gotestsum --format=short-verbose --junitfile /tmp/test-results/gotestsum-report.xml -- -timeout=120m -p 2 $(go list ./... | grep -v inspec | grep -v profitbricks | grep -v oneandone)
   # Send a slack notification if either job defined above fails
   slack-notify:
+    permissions:
+      contents: none
     needs: 
       - get-go-version
       - acceptance-test
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send slack notification on failure
-        uses: slackapi/slack-github-action@v1.18.0
+        uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {

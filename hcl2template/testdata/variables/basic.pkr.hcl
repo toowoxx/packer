@@ -41,3 +41,11 @@ local "supersecret" {
   sensitive = true
   expression = "secretvar"
 }
+
+source "null" "test" {
+  communicator = "none"
+}
+
+build {
+  sources = ["null.test"]
+}

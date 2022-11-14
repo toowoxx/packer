@@ -13,6 +13,8 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
 
 jobs:
   # Build a fresh set of artifacts
@@ -78,6 +80,8 @@ jobs:
           release_id: ${{ steps.create_prerelease.outputs.id }}
   # Send a slack notification if either job defined above fails
   slack-notify:
+    permissions:
+      contents: none
     needs:
       - build-artifacts
       - github-release
@@ -85,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send slack notification on failure
-        uses: slackapi/slack-github-action@v1.18.0
+        uses: slackapi/slack-github-action@v1.23.0
         with:
           payload: |
             {

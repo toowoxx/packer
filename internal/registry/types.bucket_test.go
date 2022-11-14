@@ -2,23 +2,21 @@ package registry
 
 import (
 	"context"
-	"os"
+	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
 
 func createInitialTestBucket(t testing.TB) *Bucket {
-	oldEnv := os.Getenv("HCP_PACKER_BUILD_FINGERPRINT")
-	os.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "no-fingerprint-here")
-	defer func() {
-		os.Setenv("HCP_PACKER_BUILD_FINGERPRINT", oldEnv)
-	}()
+	t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "no-fingerprint-here")
 
 	t.Helper()
-	bucket, err := NewBucketWithIteration(IterationOptions{})
+	bucket := NewBucketWithIteration()
+	err := bucket.Iteration.Initialize(IterationOptions{})
 	if err != nil {
-		t.Fatalf("failed when calling NewBucketWithIteration: %s", err)
+		t.Errorf("failed to initialize Bucket: %s", err)
+		return nil
 	}
 
 	mockService := NewMockPackerClientService()
@@ -278,16 +276,19 @@ func TestBucket_PopulateIteration(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tc {
+	for i, tt := range tc {
 		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
+
+			t.Setenv("HCP_PACKER_BUILD_FINGERPRINT", "test-run-"+strconv.Itoa(i))
 
 			mockService := NewMockPackerClientService()
 			mockService.BucketAlreadyExist = true
 			mockService.IterationAlreadyExist = true
 			mockService.BuildAlreadyDone = tt.buildCompleted
 
-			bucket, err := NewBucketWithIteration(IterationOptions{})
+			bucket := NewBucketWithIteration()
+			err := bucket.Iteration.Initialize(IterationOptions{})
 			if err != nil {
 				t.Fatalf("failed when calling NewBucketWithIteration: %s", err)
 			}

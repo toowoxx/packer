@@ -79,6 +79,17 @@ func (c *CheckpointTelemetry) baseParams(prefix string) *checkpoint.ReportParams
 		version += "-" + packerVersion.VersionPrerelease
 	}
 
+	if c == nil {
+		return &checkpoint.ReportParams{
+			Product:       "packer",
+			SchemaVersion: prefix,
+			StartTime:     time.UnixMilli(0),
+			Version:       version,
+			RunID:         os.Getenv("PACKER_RUN_UUID"),
+			SignatureFile: c.signatureFile,
+		}
+	}
+
 	return &checkpoint.ReportParams{
 		Product:       "packer",
 		SchemaVersion: prefix,
@@ -132,6 +143,9 @@ func (c *CheckpointTelemetry) SetTemplateType(t PackerTemplateType) {
 
 // SetBundledUsage marks the template as using bundled plugins
 func (c *CheckpointTelemetry) SetBundledUsage() {
+	if c == nil {
+		return
+	}
 	c.useBundled = true
 }
 

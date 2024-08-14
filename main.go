@@ -472,7 +472,7 @@ func copyOutput(r io.Reader, doneCh chan<- struct{}) {
 }
 
 func inPlugin() bool {
-	return true
+	return false
 }
 
 func init() {
